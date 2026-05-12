@@ -1,0 +1,26 @@
+.App {
+    min-height: 100vh;
+    background-color: hsl(var(--background));
+}
+
+.sidebar {
+    background-color: hsl(var(--sidebar-bg));
+    color: hsl(var(--sidebar-text));
+}
+
+.sidebar a.active {
+    background-color: hsl(var(--sidebar-active));
+    color: white;
+}
+
+.sidebar a:hover {
+    background-color: hsl(var(--sidebar-accent) / 0.4);
+}
+
+.text-brand {
+    color: hsl(var(--primary));
+}
+
+.bg-brand {
+    background-color: hsl(var(--primary));
+}

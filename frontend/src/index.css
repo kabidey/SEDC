@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+    font-family: 'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, monospace;
+}
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 158 30% 10%;
+        --card: 0 0% 100%;
+        --card-foreground: 158 30% 10%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 158 30% 10%;
+        --primary: 158 64% 32%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 152 28% 95%;
+        --secondary-foreground: 158 64% 22%;
+        --muted: 150 16% 96%;
+        --muted-foreground: 158 8% 40%;
+        --accent: 152 60% 92%;
+        --accent-foreground: 158 64% 22%;
+        --destructive: 0 70% 45%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 150 14% 88%;
+        --input: 150 14% 90%;
+        --ring: 158 64% 32%;
+        --chart-1: 158 64% 42%;
+        --chart-2: 142 58% 48%;
+        --chart-3: 187 47% 44%;
+        --chart-4: 43 74% 60%;
+        --chart-5: 27 87% 60%;
+        --radius: 0.5rem;
+        /* Sidebar */
+        --sidebar-bg: 158 50% 12%;
+        --sidebar-text: 0 0% 92%;
+        --sidebar-accent: 158 64% 32%;
+        --sidebar-active: 158 64% 22%;
+    }
+    .dark {
+        --background: 158 20% 8%;
+        --foreground: 0 0% 95%;
+        --card: 158 24% 12%;
+        --card-foreground: 0 0% 95%;
+        --popover: 158 24% 12%;
+        --popover-foreground: 0 0% 95%;
+        --primary: 158 64% 42%;
+        --primary-foreground: 158 50% 10%;
+        --secondary: 158 24% 16%;
+        --secondary-foreground: 0 0% 95%;
+        --muted: 158 24% 16%;
+        --muted-foreground: 158 8% 65%;
+        --accent: 158 30% 22%;
+        --accent-foreground: 0 0% 95%;
+        --destructive: 0 70% 45%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 158 24% 22%;
+        --input: 158 24% 22%;
+        --ring: 158 64% 42%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+/* Rack elevation styles */
+.rack-unit {
+    @apply border border-border;
+}
+.rack-unit.occupied {
+    @apply bg-emerald-100 border-emerald-300;
+}
+.rack-unit.empty {
+    @apply bg-muted/30;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/60;
+}
