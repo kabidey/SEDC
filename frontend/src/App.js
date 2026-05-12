@@ -18,6 +18,11 @@ import DiscoveryDashboard from '@/pages/DiscoveryDashboard';
 import { CredentialsPage, JobsPage, DiscoveredDevicesPage } from '@/pages/DiscoveryPages';
 import DiscoveryTopology from '@/pages/DiscoveryTopology';
 import NetdiscoSync from '@/pages/NetdiscoSync';
+import NOCDashboard from '@/pages/NOCDashboard';
+import Monitors from '@/pages/Monitors';
+import AlertRules from '@/pages/AlertRules';
+import AlertHistory from '@/pages/AlertHistory';
+import NotificationChannels from '@/pages/NotificationChannels';
 import { RESOURCES } from '@/lib/resources';
 
 function RequireAuth({ children }) {
@@ -63,6 +68,11 @@ function AppRoutes() {
               <Route path="/discovery/devices" element={<DiscoveredDevicesPage />} />
               <Route path="/discovery/topology" element={<DiscoveryTopology />} />
               <Route path="/discovery/netdisco" element={<NetdiscoSync />} />
+              <Route path="/monitoring" element={<NOCDashboard />} />
+              <Route path="/monitoring/monitors" element={<Monitors />} />
+              <Route path="/monitoring/rules" element={<AlertRules />} />
+              <Route path="/monitoring/alerts" element={<AlertHistory />} />
+              <Route path="/monitoring/channels" element={<NotificationChannels />} />
               <Route path="/:resource/:id" element={<ResourceDetailRoute />} />
               <Route path="/:resource" element={<ResourceListRoute />} />
               <Route path="*" element={<div className="p-6">Page not found.</div>} />

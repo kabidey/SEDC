@@ -143,6 +143,17 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    label: 'Monitoring',
+    icon: 'activity',
+    items: [
+      { path: 'monitoring', label: 'NOC Dashboard', special: true },
+      { path: 'monitoring/monitors', label: 'Monitors', special: true },
+      { path: 'monitoring/rules', label: 'Alert Rules', special: true },
+      { path: 'monitoring/alerts', label: 'Alert History', special: true },
+      { path: 'monitoring/channels', label: 'Notification Channels', special: true },
+    ],
+  },
+  {
     label: 'Discovery',
     icon: 'radar',
     items: [

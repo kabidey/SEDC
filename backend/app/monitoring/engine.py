@@ -117,7 +117,7 @@ async def stop():
         _TASK.cancel()
         try:
             await _TASK
-        except Exception:
+        except (asyncio.CancelledError, Exception):
             pass
         _TASK = None
 

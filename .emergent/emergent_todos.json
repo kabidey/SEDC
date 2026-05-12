@@ -1,34 +1,50 @@
 [
   {
-    "content": "Install monitoring deps (ping3) + design data models",
+    "content": "Wire monitoring_router into server.py + add engine start/stop in lifespan",
+    "status": "completed"
+  },
+  {
+    "content": "Add WebSocket endpoint alongside SSE for live monitoring events",
+    "status": "completed"
+  },
+  {
+    "content": "Add MongoDB indexes for monitors/alerts/metric_samples",
+    "status": "completed"
+  },
+  {
+    "content": "Restart backend + verify monitoring endpoints via curl",
+    "status": "completed"
+  },
+  {
+    "content": "Build NOCDashboard.jsx (live tiles + alert feed + SSE listener)",
+    "status": "completed"
+  },
+  {
+    "content": "Build Monitors.jsx (CRUD + run-now + metrics view)",
+    "status": "completed"
+  },
+  {
+    "content": "Build AlertRules.jsx (CRUD with condition/severity/channels)",
+    "status": "completed"
+  },
+  {
+    "content": "Build AlertHistory.jsx (filter, ack, resolve)",
+    "status": "completed"
+  },
+  {
+    "content": "Build NotificationChannels.jsx (CRUD + test)",
+    "status": "completed"
+  },
+  {
+    "content": "Register Monitoring nav group in resources.js + Layout icon + App.js routes",
+    "status": "completed"
+  },
+  {
+    "content": "Lint backend (ruff) and frontend (esbuild)",
+    "status": "completed"
+  },
+  {
+    "content": "Run testing_agent for monitoring backend + frontend",
     "status": "in_progress"
-  },
-  {
-    "content": "Backend: Check engine (ICMP, TCP, HTTP, SNMP, DNS) with async runners + retries",
-    "status": "pending"
-  },
-  {
-    "content": "Backend: Alert rule evaluator + state machine + notification dispatcher (email/webhook/Slack/Teams)",
-    "status": "pending"
-  },
-  {
-    "content": "Backend: Background scheduler that polls monitors at their intervals",
-    "status": "pending"
-  },
-  {
-    "content": "Backend: SSE realtime stream + REST endpoints (monitors, alerts, rules, channels, metrics)",
-    "status": "pending"
-  },
-  {
-    "content": "Frontend: Live NOC Dashboard with status grid, sparkline charts, active alerts panel, sound option",
-    "status": "pending"
-  },
-  {
-    "content": "Frontend: Monitor / Alert Rule / Channel / Alert History pages + sidebar entries",
-    "status": "pending"
-  },
-  {
-    "content": "Run end-to-end testing",
-    "status": "pending"
   }
 ]

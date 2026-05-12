@@ -19,6 +19,8 @@ from app.routers.special_routers import (
     changelog_router, search_router, stats_router,
 )
 from app.routers.discovery_router import router as discovery_router
+from app.routers.monitoring_router import router as monitoring_router
+from app.monitoring import engine as monitoring_engine
 from app.graphql_api import graphql_router
 
 app = FastAPI(title='SMIFS Enterprise Data Centre', version='1.0.0')
@@ -62,6 +64,7 @@ api_router.include_router(changelog_router)
 api_router.include_router(search_router)
 api_router.include_router(stats_router)
 api_router.include_router(discovery_router)
+api_router.include_router(monitoring_router)
 
 
 # Schema introspection: list all available models
@@ -107,11 +110,30 @@ async def on_startup():
         await db.users.create_index('username', unique=True)
         await db.object_changes.create_index('time')
         await db.object_changes.create_index([('object_type', 1), ('object_id', 1)])
+        # Monitoring indexes
+        await db.monitors.create_index('enabled')
+        await db.monitors.create_index('current_status')
+        await db.metric_samples.create_index([('monitor_id', 1), ('time', -1)])
+        await db.metric_samples.create_index('time')
+        await db.alerts.create_index([('state', 1), ('started_at', -1)])
+        await db.alerts.create_index('monitor_id')
+        await db.alert_rules.create_index('monitor_id')
+        await db.notification_logs.create_index('sent_at')
     except Exception as e:
         logger.warning(f'Index init: {e}')
+    # Start monitoring scheduler
+    try:
+        await monitoring_engine.start()
+        logger.info('Monitoring engine started')
+    except Exception as e:
+        logger.error(f'Monitoring engine failed to start: {e}')
     logger.info('SMIFS Enterprise Data Centre started')
 
 
 @app.on_event('shutdown')
 async def on_shutdown():
+    try:
+        await monitoring_engine.stop()
+    except Exception:
+        pass
     client.close()

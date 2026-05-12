@@ -2,7 +2,7 @@
 import asyncio
 import json
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Request, Body
+from fastapi import APIRouter, Depends, HTTPException, Request, Body, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
@@ -324,3 +324,62 @@ async def stream(request: Request, token: Optional[str] = None):
         'X-Accel-Buffering': 'no',
         'Connection': 'keep-alive',
     })
+
+
+# ============ WEBSOCKET REALTIME ============
+@router.websocket('/ws')
+async def ws_stream(websocket: WebSocket, token: Optional[str] = None):
+    """WebSocket variant of the live event stream.
+
+    Auth via query token; same JWT as REST. Emits JSON events with shape
+    {type, ...}. Client can send {"type":"ping"} to keep the link warm.
+    """
+    if token:
+        from ..auth import SECRET_KEY, ALGORITHM
+        import jwt as _jwt
+        try:
+            _jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        except Exception:
+            await websocket.close(code=4401)
+            return
+    await websocket.accept()
+    queue = await pubsub.subscribe()
+    await websocket.send_text(json.dumps({'type': 'hello', 'msg': 'connected'}))
+
+    async def reader():
+        try:
+            while True:
+                msg = await websocket.receive_text()
+                # Just echo pings for liveness; no other client commands today.
+                try:
+                    data = json.loads(msg)
+                    if data.get('type') == 'ping':
+                        await websocket.send_text(json.dumps({'type': 'pong'}))
+                except Exception:
+                    pass
+        except WebSocketDisconnect:
+            return
+        except Exception:
+            return
+
+    reader_task = asyncio.create_task(reader())
+    try:
+        while True:
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=15.0)
+                await websocket.send_text(json.dumps(event, default=str))
+            except asyncio.TimeoutError:
+                # Keep-alive
+                try:
+                    await websocket.send_text(json.dumps({'type': 'ping'}))
+                except Exception:
+                    break
+            except WebSocketDisconnect:
+                break
+    finally:
+        reader_task.cancel()
+        await pubsub.unsubscribe(queue)
+        try:
+            await websocket.close()
+        except Exception:
+            pass

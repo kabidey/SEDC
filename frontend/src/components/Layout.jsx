@@ -5,7 +5,7 @@ import { NAV_GROUPS } from '../lib/resources';
 import {
   Building2, Server, Columns3, Cable, Globe, Route, Zap, Box, Wifi, Shield,
   Settings2, ShieldCheck, ChevronDown, ChevronRight, LogOut, Search, LayoutDashboard,
-  User as UserIcon, Menu as MenuIcon, X, Radar, BookOpen,
+  User as UserIcon, Menu as MenuIcon, X, Radar, BookOpen, Activity,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import api from '../lib/api';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-const ICON_MAP = { 'building-2': Building2, server: Server, 'columns-3': Columns3, cable: Cable, globe: Globe, route: Route, zap: Zap, box: Box, wifi: Wifi, shield: Shield, 'settings-2': Settings2, 'shield-check': ShieldCheck, radar: Radar };
+const ICON_MAP = { 'building-2': Building2, server: Server, 'columns-3': Columns3, cable: Cable, globe: Globe, route: Route, zap: Zap, box: Box, wifi: Wifi, shield: Shield, 'settings-2': Settings2, 'shield-check': ShieldCheck, radar: Radar, activity: Activity };
 
 function SidebarGroup({ group, openGroups, toggleGroup, onItemClick }) {
   const Icon = ICON_MAP[group.icon] || Server;
