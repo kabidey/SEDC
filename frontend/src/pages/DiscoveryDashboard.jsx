@@ -39,7 +39,7 @@ export default function DiscoveryDashboard() {
       if (adhoc.credential_id && adhoc.credential_id !== '__none__') body.credential_id = adhoc.credential_id;
       const { data } = await api.post('/discovery/scan', body);
       setAdhocResult(data);
-      toast.success(`Scanned ${data.target} — ${data.simulated ? 'simulated' : 'live'} result`);
+      toast.success(`Scanned ${data.target} — ${data.reachable ? 'reachable' : 'unreachable'}`);
       load();
     } catch (e) { toast.error('Scan failed'); }
     setScanning(false);
@@ -91,7 +91,7 @@ export default function DiscoveryDashboard() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">Ad-hoc Scan</CardTitle>
-          <CardDescription>Probe a single target by IP/hostname using SNMP. Falls back to simulated results if unreachable.</CardDescription>
+          <CardDescription>Probe a single target by IP/hostname using SNMP. Unreachable hosts return an honest error — no simulated data.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3 items-end mb-4">
@@ -112,18 +112,26 @@ export default function DiscoveryDashboard() {
             <Button onClick={runAdhoc} disabled={scanning || !adhoc.target} data-testid="adhoc-scan-btn"><Play size={14} className="mr-1" />{scanning ? 'Scanning…' : 'Scan'}</Button>
           </div>
           {adhocResult && (
-            <div className="border rounded p-4 bg-muted/30 space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <Badge variant={adhocResult.simulated ? 'secondary' : 'default'}>{adhocResult.simulated ? 'simulated' : 'live SNMP'}</Badge>
+            <div className={`border rounded p-4 space-y-2 text-sm ${adhocResult.reachable ? 'bg-muted/30 border-emerald-500/40' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-500/40'}`} data-testid="adhoc-scan-result">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge className={adhocResult.reachable ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}>
+                  {adhocResult.reachable ? 'live SNMP' : 'unreachable'}
+                </Badge>
                 <span className="font-semibold">{adhocResult.sysname || adhocResult.target}</span>
-                <Badge variant="outline">{adhocResult.vendor}</Badge>
-                <Badge variant="outline">{adhocResult.model}</Badge>
+                {adhocResult.vendor && <Badge variant="outline">{adhocResult.vendor}</Badge>}
+                {adhocResult.model && <Badge variant="outline">{adhocResult.model}</Badge>}
                 <span className="flex-1" />
-                <Button size="sm" onClick={importIt}><Download size={14} className="mr-1" />Import to SMIFS</Button>
+                {adhocResult.reachable && <Button size="sm" onClick={importIt}><Download size={14} className="mr-1" />Import to SMIFS</Button>}
               </div>
-              <div><span className="text-muted-foreground">Description:</span> {adhocResult.sysdescr}</div>
-              <div><span className="text-muted-foreground">Location:</span> {adhocResult.syslocation || '—'}</div>
-              <div><span className="text-muted-foreground">Interfaces:</span> {(adhocResult.interfaces || []).length}, <span className="text-muted-foreground">IPs:</span> {(adhocResult.ip_addresses || []).length}, <span className="text-muted-foreground">Neighbors:</span> {(adhocResult.neighbors || []).length}</div>
+              {adhocResult.reachable ? (
+                <>
+                  <div><span className="text-muted-foreground">Description:</span> {adhocResult.sysdescr}</div>
+                  <div><span className="text-muted-foreground">Location:</span> {adhocResult.syslocation || '—'}</div>
+                  <div><span className="text-muted-foreground">Interfaces:</span> {(adhocResult.interfaces || []).length}, <span className="text-muted-foreground">IPs:</span> {(adhocResult.ip_addresses || []).length}, <span className="text-muted-foreground">Neighbors:</span> {(adhocResult.neighbors || []).length}</div>
+                </>
+              ) : (
+                <div className="text-rose-700 dark:text-rose-300"><span className="font-medium">SNMP error:</span> {adhocResult.error || 'unreachable'}</div>
+              )}
             </div>
           )}
         </CardContent>

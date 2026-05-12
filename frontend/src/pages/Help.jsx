@@ -524,9 +524,9 @@ Contact       : "Anil Sharma"  role=NOC  phone=+91...`}</Code>
         for import.
       </P>
       <Tip tone="warn">
-        In offline/sandbox environments SNMP traffic cannot leave the container. The scanner detects this and falls
-        back to a deterministic <em>simulated</em> result that mimics a real device. These are labelled "simulated" in
-        the UI so you can tell them apart from live data.
+        Discovery uses real SNMP traffic. If a target is unreachable, behind a firewall, or has the wrong community/credential,
+        SMIFS returns an honest <em>unreachable</em> result with the specific error (timeout, no reply, auth failure). There
+        is no simulated data — what you see in the Discovered Devices list is what came back on the wire.
       </Tip>
     </div>
   ),

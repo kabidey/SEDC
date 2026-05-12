@@ -202,13 +202,13 @@ export function DiscoveredDevicesPage() {
                 <td className="p-3 font-medium">{d.sysname || '—'}</td>
                 <td className="p-3">{d.vendor}</td>
                 <td className="p-3">{d.model}</td>
-                <td className="p-3">{d.simulated ? <Badge variant="secondary">simulated</Badge> : d.reachable ? <Badge>live</Badge> : <Badge variant="destructive">unreachable</Badge>}</td>
+                <td className="p-3">{d.reachable ? <Badge className="bg-emerald-600 text-white">live SNMP</Badge> : <Badge variant="destructive" title={d.error || ''}>unreachable</Badge>}</td>
                 <td className="p-3 tabular-nums">{(d.interfaces || []).length}</td>
                 <td className="p-3 text-xs text-muted-foreground">{d.discovered_at?.slice(0, 19).replace('T', ' ')}</td>
                 <td className="p-3 text-right">
                   <div className="flex gap-1 justify-end">
                     <Button size="sm" variant="outline" onClick={() => setSelected(d)}>Details</Button>
-                    <Button size="sm" onClick={() => importIt(d.id)} data-testid={`import-${d.id}`}>Import</Button>
+                    {d.reachable && <Button size="sm" onClick={() => importIt(d.id)} data-testid={`import-${d.id}`}>Import</Button>}
                     <Button size="icon" variant="ghost" onClick={() => del(d.id)}><Trash2 size={14} className="text-destructive" /></Button>
                   </div>
                 </td>

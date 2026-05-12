@@ -137,7 +137,7 @@ async def _execute_job(job_id: str, user: Dict[str, Any]):
         }
         await db.discovered_devices.insert_one(doc)
         discovered += 1
-        if job.get('auto_import') and (r.get('reachable') or r.get('simulated')):
+        if job.get('auto_import') and r.get('reachable'):
             try:
                 await import_discovered_device(r, job.get('site_id'), user)
                 imported += 1
@@ -285,7 +285,7 @@ async def netdisco_sync(settings: NetdiscoSettings, user=Depends(require_user)):
                 'id': new_id(),
                 'target': ip,
                 'reachable': True,
-                'simulated': False,
+                'error': None,
                 'sysname': d.get('name') or d.get('dns'),
                 'sysdescr': d.get('description') or d.get('os'),
                 'vendor': d.get('vendor') or d.get('mfg'),

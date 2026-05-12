@@ -1,25 +1,28 @@
-"""SNMP-based device discovery similar to Netdisco's approach.
+"""SNMP-based device discovery (Netdisco-compatible).
 
-Collects sysName, sysDescr, ifTable, ipAddrTable, LLDP neighbours.
-Gracefully falls back to a deterministic simulated result when SNMP fails
-(useful in sandbox/offline environments and for demos / tests).
+Collects sysName, sysDescr, ifTable, ipAddrTable, and LLDP neighbours from
+real SNMP-speaking devices. Targets that are unreachable or that fail SNMP
+auth return an *honest* unreachable result with an error message — there
+is **no simulation, no fake data, no fallback**. If you see results in
+the UI, they came from real wire traffic.
 """
 from __future__ import annotations
 import asyncio
-import hashlib
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from pysnmp.hlapi.asyncio import (
         SnmpEngine, CommunityData, UsmUserData, UdpTransportTarget,
-        ContextData, ObjectType, ObjectIdentity, getCmd, nextCmd,
+        ContextData, ObjectType, ObjectIdentity, getCmd, walkCmd,
         usmHMACSHAAuthProtocol, usmAesCfb128Protocol, usmNoAuthProtocol,
         usmNoPrivProtocol,
     )
     SNMP_OK = True
-except Exception:  # pragma: no cover
+    SNMP_IMPORT_ERROR: Optional[str] = None
+except Exception as _e:  # pragma: no cover
     SNMP_OK = False
+    SNMP_IMPORT_ERROR = str(_e)
 
 OID_SYSDESCR = '1.3.6.1.2.1.1.1.0'
 OID_SYSOBJECTID = '1.3.6.1.2.1.1.2.0'
@@ -38,7 +41,7 @@ OID_IFALIAS = '1.3.6.1.2.1.31.1.1.1.18'
 OID_IPADDRENT = '1.3.6.1.2.1.4.20.1'
 OID_LLDP_REMTABLE = '1.0.8802.1.1.2.1.4.1.1'
 
-# Heuristic vendor detection by sysObjectID prefix or sysDescr regex
+# Heuristic vendor detection by sysDescr regex
 VENDORS = [
     (r'cisco|ios', 'Cisco'),
     (r'juniper|junos', 'Juniper'),
@@ -67,14 +70,13 @@ def _vendor_from_desc(desc: str) -> str:
 
 def _model_from_desc(desc: str) -> str:
     if not desc:
-        return 'Unknown'
-    # cheap heuristic: first token that looks like a model code
+        return ''
     m = re.search(r'\b([A-Z][A-Z0-9\-]{2,})\b', desc)
     return m.group(1) if m else desc.split()[0][:40]
 
 
 def _detail(varbinds) -> Optional[str]:
-    for name, val in varbinds:
+    for _name, val in varbinds:
         try:
             return val.prettyPrint()
         except Exception:
@@ -97,9 +99,12 @@ async def _snmp_get(target: str, port: int, auth, oid: str, timeout: int) -> Opt
 
 
 async def _snmp_walk(target: str, port: int, auth, base_oid: str, timeout: int, max_rows: int = 500) -> List[Tuple[str, str]]:
-    """Walk a sub-tree. Returns list of (oid, value) pairs."""
+    """Walk a sub-tree. Returns list of (oid, value) pairs.
+
+    Uses pysnmp 6.x `walkCmd` (async generator).
+    """
     out: List[Tuple[str, str]] = []
-    g = nextCmd(
+    g = walkCmd(
         SnmpEngine(), auth,
         UdpTransportTarget((target, port), timeout=timeout, retries=0),
         ContextData(),
@@ -135,84 +140,50 @@ def _build_auth(credential: Dict[str, Any]):
     )
 
 
-def _simulated_result(target: str) -> Dict[str, Any]:
-    """Deterministic plausible discovery result for a target IP. Used when SNMP fails.
-
-    Makes it possible to demonstrate the discovery + mapping flow without
-    needing reachable network devices.
-    """
-    h = hashlib.md5(target.encode()).hexdigest()
-    seed = int(h[:6], 16)
-    vendor_idx = seed % len(VENDORS)
-    vendor_name = VENDORS[vendor_idx][1]
-    role = ['Core Switch', 'Distribution Switch', 'Access Switch', 'Router', 'Firewall'][seed % 5]
-    model = {
-        'Cisco': ['Catalyst 9300', 'Nexus 9000', 'ISR 4451'][seed % 3],
-        'Juniper': ['EX4300', 'MX204', 'SRX340'][seed % 3],
-        'Arista': ['7050X3', '7280R3', '7508R'][seed % 3],
-        'MikroTik': ['CCR2004', 'CRS328', 'hAP ax3'][seed % 3],
-        'Huawei': ['S5720', 'NE40E', 'USG6000'][seed % 3],
-    }.get(vendor_name, ['Generic-1000', 'Generic-2000', 'Generic-3000'][seed % 3])
-    name = f"sim-{target.replace('.', '-')}"
-    sys_descr = f"{vendor_name} {model} {role} simulated"
-    interfaces = []
-    for i in range(1, 9):
-        interfaces.append({
-            'ifindex': i,
-            'name': f'GigabitEthernet0/{i}',
-            'descr': f'Port {i}',
-            'alias': '',
-            'type': 'ethernetCsmacd',
-            'mtu': 1500,
-            'speed': 1000000000,
-            'mac': ':'.join(['%02x' % ((seed + i + j) & 0xff) for j in range(6)]),
-            'oper_status': 'up' if i % 3 != 0 else 'down',
-        })
-    ip_addresses = [target + '/24']
-    neighbors = []
-    if seed % 2 == 0:
-        nb_idx = (seed + 17) % 254 + 1
-        neighbors.append({
-            'local_ifindex': 1,
-            'local_port': 'GigabitEthernet0/1',
-            'remote_chassis_id': h[:12],
-            'remote_system_name': f"sim-10-0-0-{nb_idx}",
-            'remote_port': 'GigabitEthernet0/2',
-            'remote_management_address': f'10.0.0.{nb_idx}',
-        })
+def _empty_result(target: str, error: str) -> Dict[str, Any]:
+    """Return an honest 'unreachable' record. No fabricated fields."""
     return {
         'target': target,
         'reachable': False,
-        'simulated': True,
-        'sysname': name,
-        'sysdescr': sys_descr,
-        'syscontact': 'noc@smifs.local',
-        'syslocation': 'Simulated DC',
-        'sysobjectid': f'1.3.6.1.4.1.{9 if vendor_name == "Cisco" else 4742}',
-        'vendor': vendor_name,
-        'model': model,
-        'role': role,
-        'interfaces': interfaces,
-        'ip_addresses': ip_addresses,
-        'neighbors': neighbors,
+        'error': error,
+        'sysname': '',
+        'sysdescr': '',
+        'syscontact': '',
+        'syslocation': '',
+        'sysobjectid': '',
+        'vendor': '',
+        'model': '',
+        'role': '',
+        'interfaces': [],
+        'ip_addresses': [],
+        'neighbors': [],
     }
 
 
 async def scan_target(target: str, credential: Dict[str, Any], timeout: int = 4) -> Dict[str, Any]:
     """Scan a single host with SNMP. Returns a normalised dict.
 
-    If SNMP is unavailable or unreachable, return a simulated result (so the
-    rest of the pipeline can be demonstrated).
+    On any failure (pysnmp missing, no reply, auth error, exception) returns
+    an *honest* unreachable record with the error message. No simulation.
     """
     port = credential.get('port', 161)
     if not SNMP_OK:
-        return _simulated_result(target)
+        return _empty_result(target, f'SNMP library not available: {SNMP_IMPORT_ERROR}')
     try:
         auth = _build_auth(credential)
-        # Probe sysDescr
-        sys_descr = await asyncio.wait_for(_snmp_get(target, port, auth, OID_SYSDESCR, timeout), timeout=timeout + 1)
+        # Probe sysDescr first to confirm reachability
+        try:
+            sys_descr = await asyncio.wait_for(
+                _snmp_get(target, port, auth, OID_SYSDESCR, timeout),
+                timeout=timeout + 1,
+            )
+        except asyncio.TimeoutError:
+            return _empty_result(target, f'SNMP timeout after {timeout}s on UDP/{port}')
         if sys_descr is None:
-            return _simulated_result(target)
+            return _empty_result(
+                target,
+                f'No SNMP reply on UDP/{port} (check reachability, community/credential, ACLs and firewall)',
+            )
         sys_name = await _snmp_get(target, port, auth, OID_SYSNAME, timeout)
         sys_contact = await _snmp_get(target, port, auth, OID_SYSCONTACT, timeout)
         sys_location = await _snmp_get(target, port, auth, OID_SYSLOCATION, timeout)
@@ -226,7 +197,7 @@ async def scan_target(target: str, credential: Dict[str, Any], timeout: int = 4)
         ifoper_rows = await _snmp_walk(target, port, auth, OID_IFOPER, timeout)
         ifalias_rows = await _snmp_walk(target, port, auth, OID_IFALIAS, timeout)
         ipaddr_rows = await _snmp_walk(target, port, auth, OID_IPADDRENT, timeout)
-        # Build interface dict by ifIndex
+
         def _index(rows):
             d = {}
             for oid, val in rows:
@@ -254,18 +225,14 @@ async def scan_target(target: str, credential: Dict[str, Any], timeout: int = 4)
             })
         # IP addresses
         ip_addresses = []
-        # ipAdEntAddr (1.3.6.1.2.1.4.20.1.1) -> address; mask is .3
-        ip_addr_rows = [(o, v) for o, v in ipaddr_rows if '.1.3.6.1.2.1.4.20.1.1.' in o or o.startswith('.iso')]
         for oid, val in ipaddr_rows:
             if '.4.20.1.1.' in oid:
-                ip_addresses.append(val + '/32')  # mask resolution skipped; safer default
+                ip_addresses.append(val + '/32')
         # LLDP neighbours
         try:
             lldp_rows = await _snmp_walk(target, port, auth, OID_LLDP_REMTABLE, timeout)
         except Exception:
             lldp_rows = []
-        neighbors = []
-        # Best-effort parse: group by remote index
         nb_map: Dict[str, Dict[str, Any]] = {}
         for oid, val in lldp_rows:
             parts = oid.split('.')
@@ -274,19 +241,19 @@ async def scan_target(target: str, credential: Dict[str, Any], timeout: int = 4)
             except Exception:
                 continue
             nb = nb_map.setdefault(remote_idx, {})
-            nb['remote_chassis_id'] = val if '.5.' in oid else nb.get('remote_chassis_id')
+            if '.5.' in oid:
+                nb['remote_chassis_id'] = val
             if '.7.' in oid:
                 nb['remote_port'] = val
             if '.9.' in oid:
                 nb['remote_system_name'] = val
-        for nb in nb_map.values():
-            if nb:
-                neighbors.append(nb)
+        neighbors = [nb for nb in nb_map.values() if nb]
+
         vendor = _vendor_from_desc(sys_descr)
         return {
             'target': target,
             'reachable': True,
-            'simulated': False,
+            'error': None,
             'sysname': sys_name or '',
             'sysdescr': sys_descr or '',
             'syscontact': sys_contact or '',
@@ -299,8 +266,8 @@ async def scan_target(target: str, credential: Dict[str, Any], timeout: int = 4)
             'ip_addresses': ip_addresses,
             'neighbors': neighbors,
         }
-    except Exception:
-        return _simulated_result(target)
+    except Exception as e:
+        return _empty_result(target, f'SNMP error: {e.__class__.__name__}: {e}')
 
 
 async def scan_range(targets: List[str], credential: Dict[str, Any], concurrency: int = 16, timeout: int = 4) -> List[Dict[str, Any]]:
@@ -311,7 +278,7 @@ async def scan_range(targets: List[str], credential: Dict[str, Any], concurrency
             try:
                 return await scan_target(t, credential, timeout=timeout)
             except Exception as e:
-                return {'target': t, 'reachable': False, 'simulated': True, 'error': str(e)}
+                return _empty_result(t, f'{e.__class__.__name__}: {e}')
     return await asyncio.gather(*[_one(t) for t in targets])
 
 
