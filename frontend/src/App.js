@@ -13,6 +13,7 @@ import CableTrace from '@/pages/CableTrace';
 import ChangeLog from '@/pages/ChangeLog';
 import { UsersAdmin, GroupsAdmin, ApiTokensAdmin } from '@/pages/Admin';
 import GraphQLPlayground from '@/pages/GraphQLPlayground';
+import Help from '@/pages/Help';
 import DiscoveryDashboard from '@/pages/DiscoveryDashboard';
 import { CredentialsPage, JobsPage, DiscoveredDevicesPage } from '@/pages/DiscoveryPages';
 import DiscoveryTopology from '@/pages/DiscoveryTopology';
@@ -52,6 +53,7 @@ function AppRoutes() {
               <Route path="/cable-trace" element={<CableTrace />} />
               <Route path="/changelog" element={<ChangeLog />} />
               <Route path="/graphql" element={<GraphQLPlayground />} />
+              <Route path="/help" element={<Help />} />
               <Route path="/admin/users" element={<UsersAdmin />} />
               <Route path="/admin/groups" element={<GroupsAdmin />} />
               <Route path="/admin/api-tokens" element={<ApiTokensAdmin />} />

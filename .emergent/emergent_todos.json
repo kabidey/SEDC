@@ -1,18 +1,18 @@
 [
   {
-    "content": "Install discovery deps + backend models/routers (snmp + netdisco)",
+    "content": "Write comprehensive tutorial content (19 chapters, ~40 steps, beginner-friendly)",
     "status": "completed"
   },
   {
-    "content": "Backend: SNMP scanner with simulated fallback + Netdisco client + mapper",
+    "content": "Build Help.jsx page with collapsible TOC sidebar + Prev/Next navigation + search filter",
     "status": "completed"
   },
   {
-    "content": "Frontend: Discovery section (Dashboard, Credentials, Jobs, Discovered, Topology, Netdisco)",
+    "content": "Add Help/Tutorial nav entry to sidebar + onboarding banner on Dashboard",
     "status": "completed"
   },
   {
-    "content": "End-to-end testing — 96.3% pass (26/27), generic search now also matches tags",
+    "content": "Verify with screenshots — all 4 views render correctly",
     "status": "completed"
   }
 ]

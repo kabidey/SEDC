@@ -5,7 +5,7 @@ import { NAV_GROUPS } from '../lib/resources';
 import {
   Building2, Server, Columns3, Cable, Globe, Route, Zap, Box, Wifi, Shield,
   Settings2, ShieldCheck, ChevronDown, ChevronRight, LogOut, Search, LayoutDashboard,
-  User as UserIcon, Menu as MenuIcon, X, Radar,
+  User as UserIcon, Menu as MenuIcon, X, Radar, BookOpen,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -66,9 +66,13 @@ function Sidebar({ onItemClick }) {
         </Link>
       </div>
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        <NavLink to="/" onClick={onItemClick} className={({ isActive }) => `flex items-center gap-2 px-3 py-2 text-sm font-medium rounded mb-2 ${isActive ? 'bg-emerald-700/60 text-white' : 'text-emerald-100/80 hover:bg-emerald-800/40 hover:text-white'}`}>
+        <NavLink to="/" onClick={onItemClick} className={({ isActive }) => `flex items-center gap-2 px-3 py-2 text-sm font-medium rounded mb-1 ${isActive ? 'bg-emerald-700/60 text-white' : 'text-emerald-100/80 hover:bg-emerald-800/40 hover:text-white'}`}>
           <LayoutDashboard size={16} />
           Dashboard
+        </NavLink>
+        <NavLink to="/help" onClick={onItemClick} className={({ isActive }) => `flex items-center gap-2 px-3 py-2 text-sm font-medium rounded mb-2 ${isActive ? 'bg-emerald-700/60 text-white' : 'text-emerald-100/80 hover:bg-emerald-800/40 hover:text-white'}`}>
+          <BookOpen size={16} />
+          Help &amp; Tutorial
         </NavLink>
         {NAV_GROUPS.map((g) => (
           <SidebarGroup key={g.label} group={g} openGroups={openGroups} toggleGroup={toggleGroup} onItemClick={onItemClick} />

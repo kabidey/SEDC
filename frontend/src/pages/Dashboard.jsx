@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Building2, Server, Columns3, Cable, Globe, Box, Route, Zap, Wifi, Shield, Users, FileText, Tag as TagIcon, Webhook, Radar } from 'lucide-react';
+import { Building2, Server, Columns3, Cable, Globe, Box, Route, Zap, Wifi, Shield, Users, FileText, Tag as TagIcon, Webhook, Radar, BookOpen, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 
@@ -44,6 +44,22 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground text-sm mt-1">Overview of your network and data-centre infrastructure</p>
       </div>
+
+      {/* Onboarding banner — for new users */}
+      <Link to="/help" className="block mb-6">
+        <Card className="bg-gradient-to-r from-emerald-50 via-emerald-100 to-emerald-50 border-emerald-300 hover:border-emerald-500 transition-colors">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0"><BookOpen size={24} /></div>
+            <div className="flex-1">
+              <div className="text-xs font-semibold uppercase tracking-wider text-emerald-700">New here? Start with the tutorial</div>
+              <div className="text-base font-bold text-emerald-900">Step-by-step guide: from zero to a fully modelled data-centre in 20 minutes.</div>
+              <div className="text-xs text-emerald-800/80 mt-1">19 chapters covering the mental model, organization, racks, devices, IPAM, autodiscovery, API, and architecture patterns.</div>
+            </div>
+            <div className="text-emerald-700 flex items-center gap-1 text-sm font-semibold">Open Tutorial <ArrowRight size={16} /></div>
+          </CardContent>
+        </Card>
+      </Link>
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
         {STATS_CARDS.map((s) => {
           const Icon = s.icon;
