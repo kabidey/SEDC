@@ -166,10 +166,10 @@ export default function Layout({ children }) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => nav('/admin/api-tokens')}><Settings2 size={14} className="mr-2" />API Tokens</DropdownMenuItem>
-              {user?.is_admin && <DropdownMenuItem onClick={() => nav('/admin/users')}><ShieldCheck size={14} className="mr-2" />Admin</DropdownMenuItem>}
+              <DropdownMenuItem onSelect={() => nav('/admin/api-tokens')}><Settings2 size={14} className="mr-2" />API Tokens</DropdownMenuItem>
+              {user?.is_admin && <DropdownMenuItem onSelect={() => nav('/admin/users')}><ShieldCheck size={14} className="mr-2" />Admin</DropdownMenuItem>}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => { logout(); nav('/login'); }} data-testid="logout-button"><LogOut size={14} className="mr-2" />Sign Out</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => { logout(); nav('/login'); }} data-testid="logout-button"><LogOut size={14} className="mr-2" />Sign Out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
