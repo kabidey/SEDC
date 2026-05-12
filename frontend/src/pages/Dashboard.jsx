@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Building2, Server, Columns3, Cable, Globe, Box, Route, Zap, Wifi, Shield, Users, FileText, Tag as TagIcon, Webhook } from 'lucide-react';
+import { Building2, Server, Columns3, Cable, Globe, Box, Route, Zap, Wifi, Shield, Users, FileText, Tag as TagIcon, Webhook, Radar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 
@@ -44,7 +44,7 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground text-sm mt-1">Overview of your network and data-centre infrastructure</p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
         {STATS_CARDS.map((s) => {
           const Icon = s.icon;
           const count = stats.counters?.[s.key] ?? 0;
@@ -65,6 +65,20 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      <Link to="/discovery" className="block mb-6">
+        <Card className="bg-emerald-900 text-white hover:bg-emerald-800 transition-colors">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-emerald-700 flex items-center justify-center"><Radar size={24} /></div>
+            <div className="flex-1">
+              <div className="text-sm font-semibold uppercase tracking-wider text-emerald-200">Autodiscovery</div>
+              <div className="text-lg font-bold">SNMP &amp; Netdisco-based asset discovery</div>
+              <div className="text-xs text-emerald-200/80 mt-1">Scan subnets, pull from external Netdisco, auto-map devices, interfaces, cables.</div>
+            </div>
+            <div className="text-emerald-200">→</div>
+          </CardContent>
+        </Card>
+      </Link>
 
       <Card>
         <CardHeader>

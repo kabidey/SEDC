@@ -143,6 +143,18 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    label: 'Discovery',
+    icon: 'radar',
+    items: [
+      { path: 'discovery', label: 'Dashboard', special: true },
+      { path: 'discovery/credentials', label: 'Credentials', special: true },
+      { path: 'discovery/jobs', label: 'Discovery Jobs', special: true },
+      { path: 'discovery/devices', label: 'Discovered Devices', special: true },
+      { path: 'discovery/topology', label: 'Network Topology', special: true },
+      { path: 'discovery/netdisco', label: 'Netdisco Sync', special: true },
+    ],
+  },
+  {
     label: 'Customization',
     icon: 'settings-2',
     items: [

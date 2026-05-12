@@ -1,585 +1,371 @@
+#!/usr/bin/env python3
 """
-Comprehensive backend API tests for SMIFS Enterprise Data Centre (NetBox clone)
-Tests all 95 models and special endpoints as specified in the review request.
+Backend API tests for SMIFS Discovery Module
+Tests all 17 backend features specified in the review request.
 """
 import requests
 import sys
-import json
+import time
 from datetime import datetime
 
 BASE_URL = "https://data-centre-hub.preview.emergentagent.com/api"
 
-class NetBoxTester:
+class DiscoveryTester:
     def __init__(self):
         self.token = None
         self.tests_run = 0
         self.tests_passed = 0
         self.tests_failed = 0
         self.failures = []
-        self.created_ids = {}  # Track created resources for cleanup and FK references
+        self.credential_id = None
+        self.job_id = None
+        self.discovered_device_id = None
 
     def log(self, msg, level="INFO"):
         print(f"[{level}] {msg}")
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
-        """Run a single API test"""
-        url = f"{BASE_URL}{endpoint}"
-        h = {'Content-Type': 'application/json'}
-        if self.token:
-            h['Authorization'] = f'Bearer {self.token}'
-        if headers:
-            h.update(headers)
-
+    def test(self, name, func):
+        """Run a single test"""
         self.tests_run += 1
-        self.log(f"Testing {name}...")
-        
+        self.log(f"\n{'='*60}")
+        self.log(f"Test {self.tests_run}: {name}")
+        self.log('='*60)
         try:
-            if method == 'GET':
-                response = requests.get(url, headers=h, timeout=10)
-            elif method == 'POST':
-                response = requests.post(url, json=data, headers=h, timeout=10)
-            elif method == 'PATCH':
-                response = requests.patch(url, json=data, headers=h, timeout=10)
-            elif method == 'DELETE':
-                response = requests.delete(url, headers=h, timeout=10)
-            else:
-                raise ValueError(f"Unsupported method: {method}")
-
-            success = response.status_code == expected_status
-            if success:
-                self.tests_passed += 1
-                self.log(f"✅ PASSED - {name} (Status: {response.status_code})", "PASS")
-                try:
-                    return True, response.json() if response.text else {}
-                except:
-                    return True, {}
-            else:
-                self.tests_failed += 1
-                error_detail = response.text[:200] if response.text else "No response body"
-                self.log(f"❌ FAILED - {name} - Expected {expected_status}, got {response.status_code}", "FAIL")
-                self.log(f"   Response: {error_detail}", "FAIL")
-                self.failures.append({
-                    'test': name,
-                    'expected': expected_status,
-                    'actual': response.status_code,
-                    'response': error_detail
-                })
-                return False, {}
-
+            func()
+            self.tests_passed += 1
+            self.log(f"✅ PASSED: {name}", "PASS")
+            return True
+        except AssertionError as e:
+            self.tests_failed += 1
+            self.failures.append(f"{name}: {str(e)}")
+            self.log(f"❌ FAILED: {name} - {str(e)}", "FAIL")
+            return False
         except Exception as e:
             self.tests_failed += 1
-            self.log(f"❌ FAILED - {name} - Error: {str(e)}", "FAIL")
-            self.failures.append({'test': name, 'error': str(e)})
-            return False, {}
-
-    def test_root_endpoint(self):
-        """Test GET /api/ returns app info"""
-        success, data = self.run_test("Root endpoint", "GET", "/", 200)
-        if success and data.get('app') == 'SMIFS Enterprise Data Centre':
-            self.log("Root endpoint returned correct app info")
-        return success
-
-    def test_health_endpoint(self):
-        """Test GET /api/health returns ok"""
-        success, data = self.run_test("Health check", "GET", "/health", 200)
-        if success and data.get('status') == 'ok':
-            self.log("Health check passed")
-        return success
-
-    def test_login(self):
-        """Test POST /api/auth/login with admin/admin"""
-        success, data = self.run_test(
-            "Login with admin/admin",
-            "POST",
-            "/auth/login",
-            200,
-            data={"username": "admin", "password": "admin"}
-        )
-        if success and 'access_token' in data and 'user' in data:
-            self.token = data['access_token']
-            self.log(f"Login successful, token obtained, user: {data['user'].get('username')}")
-            return True
-        return False
-
-    def test_register(self):
-        """Test POST /api/auth/register creates new user"""
-        username = f"testuser_{datetime.now().strftime('%H%M%S%f')}"
-        success, data = self.run_test(
-            "Register new user",
-            "POST",
-            "/auth/register",
-            200,
-            data={"username": username, "password": "testpass123", "email": "test@example.com"}
-        )
-        return success and 'access_token' in data
-
-    def test_auth_me(self):
-        """Test GET /api/auth/me returns current user"""
-        success, data = self.run_test("Get current user", "GET", "/auth/me", 200)
-        return success and data.get('username') == 'admin'
-
-    def test_schema_endpoint(self):
-        """Test GET /api/_schema returns list of all models"""
-        success, data = self.run_test("Schema introspection", "GET", "/_schema", 200)
-        if success:
-            models = data.get('models', [])
-            self.log(f"Schema returned {len(models)} models")
-            if len(models) >= 90:  # Should have ~95 models
-                self.log("✅ Schema has expected number of models")
-            else:
-                self.log(f"⚠️  Schema has only {len(models)} models, expected ~95")
-        return success
-
-    def test_sites_crud(self):
-        """Test full CRUD on /api/sites"""
-        # CREATE
-        site_data = {"name": "Test Site Alpha", "status": "active", "facility": "DC-01"}
-        success, site = self.run_test("Create site", "POST", "/sites", 200, data=site_data)
-        if not success:
+            self.failures.append(f"{name}: Unexpected error - {str(e)}")
+            self.log(f"❌ ERROR: {name} - {str(e)}", "ERROR")
             return False
-        site_id = site.get('id')
-        self.created_ids['site'] = site_id
-        
-        # LIST
-        success, list_data = self.run_test("List sites", "GET", "/sites?limit=10", 200)
-        if not success or not list_data.get('results'):
-            return False
-        
-        # GET by ID
-        success, get_data = self.run_test(f"Get site by ID", "GET", f"/sites/{site_id}", 200)
-        if not success or get_data.get('id') != site_id:
-            return False
-        
-        # UPDATE
-        update_data = {"name": "Test Site Alpha Updated", "status": "planned"}
-        success, updated = self.run_test(f"Update site", "PATCH", f"/sites/{site_id}", 200, data=update_data)
-        if not success or updated.get('name') != "Test Site Alpha Updated":
-            return False
-        
-        # Don't delete yet - we need it for FK references
-        return True
 
-    def test_devices_crud(self):
-        """Test full CRUD on /api/devices with required FKs"""
-        # First create dependencies: manufacturer, device-type, device-role, site
-        success, mfr = self.run_test("Create manufacturer", "POST", "/manufacturers", 200, 
-                                     data={"name": "Cisco"})
-        if not success:
-            return False
-        mfr_id = mfr.get('id')
-        
-        success, dtype = self.run_test("Create device-type", "POST", "/device-types", 200,
-                                       data={"manufacturer_id": mfr_id, "model": "Catalyst 9300", "u_height": 1})
-        if not success:
-            return False
-        dtype_id = dtype.get('id')
-        
-        success, role = self.run_test("Create device-role", "POST", "/device-roles", 200,
-                                      data={"name": "Switch", "color": "0000ff"})
-        if not success:
-            return False
-        role_id = role.get('id')
-        
-        site_id = self.created_ids.get('site')
-        if not site_id:
-            self.log("⚠️  No site_id available, creating one")
-            success, site = self.run_test("Create site for device", "POST", "/sites", 200,
-                                         data={"name": "Device Test Site"})
-            if not success:
-                return False
-            site_id = site.get('id')
-        
-        # CREATE device
-        device_data = {
-            "name": "sw-core-01",
-            "device_type_id": dtype_id,
-            "role_id": role_id,
-            "site_id": site_id,
-            "status": "active"
-        }
-        success, device = self.run_test("Create device", "POST", "/devices", 200, data=device_data)
-        if not success:
-            return False
-        device_id = device.get('id')
-        self.created_ids['device'] = device_id
-        
-        # GET
-        success, _ = self.run_test("Get device", "GET", f"/devices/{device_id}", 200)
-        if not success:
-            return False
-        
-        # UPDATE
-        success, _ = self.run_test("Update device", "PATCH", f"/devices/{device_id}", 200,
-                                   data={"serial": "ABC123XYZ"})
-        if not success:
-            return False
-        
-        # DELETE
-        success, _ = self.run_test("Delete device", "DELETE", f"/devices/{device_id}", 200)
-        return success
+    def login(self):
+        """Login and get JWT token"""
+        self.log("Logging in as admin...")
+        resp = requests.post(f"{BASE_URL}/auth/login", json={"username": "admin", "password": "admin"})
+        assert resp.status_code == 200, f"Login failed: {resp.status_code} {resp.text}"
+        data = resp.json()
+        assert 'access_token' in data, "No access_token in response"
+        self.token = data['access_token']
+        self.log(f"✓ Logged in successfully, token: {self.token[:20]}...")
 
-    def test_racks_crud(self):
-        """Test full CRUD on /api/racks"""
-        site_id = self.created_ids.get('site')
-        if not site_id:
-            success, site = self.run_test("Create site for rack", "POST", "/sites", 200,
-                                         data={"name": "Rack Test Site"})
-            if not success:
-                return False
-            site_id = site.get('id')
-        
-        rack_data = {"name": "Rack-A-01", "site_id": site_id, "u_height": 42}
-        success, rack = self.run_test("Create rack", "POST", "/racks", 200, data=rack_data)
-        if not success:
-            return False
-        rack_id = rack.get('id')
-        self.created_ids['rack'] = rack_id
-        
-        # Test rack elevation endpoint
-        success, elev = self.run_test("Get rack elevation", "GET", f"/rack-tools/{rack_id}/elevation", 200)
-        if success:
-            self.log(f"Rack elevation returned {len(elev.get('units', []))} units")
-        
-        return success
+    def headers(self):
+        """Return auth headers"""
+        return {'Authorization': f'Bearer {self.token}', 'Content-Type': 'application/json'}
 
-    def test_prefixes_crud(self):
-        """Test full CRUD on /api/prefixes"""
-        prefix_data = {"prefix": "10.0.0.0/8", "status": "active"}
-        success, prefix = self.run_test("Create prefix", "POST", "/prefixes", 200, data=prefix_data)
-        if not success:
-            return False
-        prefix_id = prefix.get('id')
-        self.created_ids['prefix'] = prefix_id
-        
-        # Test prefix tree endpoint
-        success, tree = self.run_test("Get prefix tree", "GET", "/prefix-tools/tree", 200)
-        if success:
-            self.log(f"Prefix tree returned {len(tree.get('results', []))} prefixes")
-        
-        return success
-
-    def test_ip_addresses_crud(self):
-        """Test full CRUD on /api/ip-addresses"""
-        ip_data = {"address": "10.0.0.1/24", "status": "active"}
-        success, ip = self.run_test("Create IP address", "POST", "/ip-addresses", 200, data=ip_data)
-        if not success:
-            return False
-        ip_id = ip.get('id')
-        
-        success, _ = self.run_test("Get IP address", "GET", f"/ip-addresses/{ip_id}", 200)
-        return success
-
-    def test_vlans_crud(self):
-        """Test full CRUD on /api/vlans"""
-        vlan_data = {"vid": 100, "name": "Management", "status": "active"}
-        success, vlan = self.run_test("Create VLAN", "POST", "/vlans", 200, data=vlan_data)
-        if not success:
-            return False
-        vlan_id = vlan.get('id')
-        
-        success, _ = self.run_test("Get VLAN", "GET", f"/vlans/{vlan_id}", 200)
-        return success
-
-    def test_customization_models(self):
-        """Test tags, custom-fields, webhooks"""
-        # Tags
-        tag_data = {"name": "Production", "slug": "production", "color": "00ff00"}
-        success, tag = self.run_test("Create tag", "POST", "/tags", 200, data=tag_data)
-        if not success:
-            return False
-        
-        # Custom fields
-        cf_data = {
-            "name": "cost_center",
-            "label": "Cost Center",
-            "type": "text",
-            "object_types": ["site", "device"]
-        }
-        success, cf = self.run_test("Create custom field", "POST", "/custom-fields", 200, data=cf_data)
-        if not success:
-            return False
-        
-        # Webhooks
-        wh_data = {
-            "name": "Site Change Webhook",
-            "object_types": ["site"],
-            "type_create": True,
-            "payload_url": "https://example.com/webhook",
-            "enabled": True,
-            "http_method": "POST"
-        }
-        success, wh = self.run_test("Create webhook", "POST", "/webhooks", 200, data=wh_data)
-        return success
-
-    def test_changelog(self):
-        """Test GET /api/changelog returns change log entries"""
-        success, data = self.run_test("Get changelog", "GET", "/changelog?limit=20", 200)
-        if success:
-            changes = data.get('results', [])
-            self.log(f"Changelog returned {len(changes)} entries")
-            return len(changes) > 0  # Should have changes from previous CRUD operations
-        return False
-
-    def test_search(self):
-        """Test GET /api/search?q=site returns search results"""
-        success, data = self.run_test("Global search", "GET", "/search?q=site", 200)
-        if success:
-            results = data.get('results', [])
-            self.log(f"Search returned {results} results")
-        return success
-
+    # Test 1: GET /api/discovery/stats
     def test_stats(self):
-        """Test GET /api/stats returns counters and recent_changes"""
-        success, data = self.run_test("Get stats", "GET", "/stats", 200)
-        if success:
-            counters = data.get('counters', {})
-            recent = data.get('recent_changes', [])
-            self.log(f"Stats: {len(counters)} counters, {len(recent)} recent changes")
-            return 'sites' in counters and isinstance(recent, list)
-        return False
+        resp = requests.get(f"{BASE_URL}/discovery/stats", headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+        data = resp.json()
+        self.log(f"Stats response: {data}")
+        assert 'credentials' in data, "Missing 'credentials' in stats"
+        assert 'jobs' in data, "Missing 'jobs' in stats"
+        assert 'discovered_devices' in data, "Missing 'discovered_devices' in stats"
+        assert 'imported_devices' in data, "Missing 'imported_devices' in stats"
+        self.log(f"✓ Stats: {data}")
 
-    def test_graphql_collections(self):
-        """Test POST /api/graphql with query '{ collections }'"""
-        query = {"query": "{ collections }"}
-        success, data = self.run_test("GraphQL collections query", "POST", "/graphql", 200, data=query)
-        if success:
-            gql_data = data.get('data', {})
-            collections = gql_data.get('collections', [])
-            self.log(f"GraphQL returned {len(collections)} collections")
-            return len(collections) > 0
-        return False
-
-    def test_graphql_collection_query(self):
-        """Test POST /api/graphql with collection query"""
-        query = {"query": "{ collection(name: \"sites\", limit: 5) { id data } }"}
-        success, data = self.run_test("GraphQL sites query", "POST", "/graphql", 200, data=query)
-        if success:
-            gql_data = data.get('data', {})
-            collection = gql_data.get('collection', [])
-            self.log(f"GraphQL sites query returned {len(collection)} items")
-        return success
-
-    def test_csv_export(self):
-        """Test GET /api/sites/export returns CSV"""
-        success, _ = self.run_test("CSV export sites", "GET", "/sites/export", 200)
-        return success
-
-    def test_csv_import(self):
-        """Test POST /api/sites/import accepts CSV upload"""
-        # Create a simple CSV
-        csv_content = "name,status\nCSV Import Site,active\n"
-        files = {'file': ('test.csv', csv_content, 'text/csv')}
-        
-        url = f"{BASE_URL}/sites/import"
-        h = {'Authorization': f'Bearer {self.token}'}
-        
-        self.tests_run += 1
-        self.log("Testing CSV import...")
-        
-        try:
-            response = requests.post(url, files=files, headers=h, timeout=10)
-            success = response.status_code == 200
-            if success:
-                self.tests_passed += 1
-                data = response.json()
-                self.log(f"✅ PASSED - CSV import (created: {data.get('created', 0)})", "PASS")
-                return True
-            else:
-                self.tests_failed += 1
-                self.log(f"❌ FAILED - CSV import - Status: {response.status_code}", "FAIL")
-                self.failures.append({'test': 'CSV import', 'status': response.status_code})
-                return False
-        except Exception as e:
-            self.tests_failed += 1
-            self.log(f"❌ FAILED - CSV import - Error: {str(e)}", "FAIL")
-            self.failures.append({'test': 'CSV import', 'error': str(e)})
-            return False
-
-    def test_cables_polymorphic(self):
-        """Test POST /api/cables with polymorphic terminations"""
-        # Create interfaces first
-        device_id = self.created_ids.get('device')
-        if not device_id:
-            self.log("⚠️  Skipping cable test - no device available")
-            return True  # Skip but don't fail
-        
-        success, iface1 = self.run_test("Create interface 1", "POST", "/interfaces", 200,
-                                        data={"device_id": device_id, "name": "eth0", "type": "1000base-t"})
-        if not success:
-            return False
-        
-        success, iface2 = self.run_test("Create interface 2", "POST", "/interfaces", 200,
-                                        data={"device_id": device_id, "name": "eth1", "type": "1000base-t"})
-        if not success:
-            return False
-        
-        cable_data = {
-            "a_terminations": [{"object_type": "interface", "object_id": iface1['id']}],
-            "b_terminations": [{"object_type": "interface", "object_id": iface2['id']}],
-            "type": "cat6",
-            "status": "connected"
+    # Test 2-4: Credentials CRUD
+    def test_create_credential(self):
+        payload = {
+            "name": "test-snmp-cred",
+            "snmp_version": "v2c",
+            "community": "public",
+            "port": 161,
+            "description": "Test credential"
         }
-        success, cable = self.run_test("Create cable", "POST", "/cables", 200, data=cable_data)
-        if not success:
-            return False
-        cable_id = cable.get('id')
-        
-        # Test cable trace
-        success, trace = self.run_test("Trace cable", "GET", f"/cables/trace/interface/{iface1['id']}", 200)
-        if success:
-            path = trace.get('path', [])
-            self.log(f"Cable trace returned path with {len(path)} hops")
-        
-        return success
+        resp = requests.post(f"{BASE_URL}/discovery/credentials", json=payload, headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        self.log(f"Created credential: {data}")
+        assert 'id' in data, "No id in response"
+        assert data['name'] == "test-snmp-cred", f"Name mismatch: {data['name']}"
+        assert data['snmp_version'] == "v2c", f"Version mismatch: {data['snmp_version']}"
+        assert data['community'] == "public", f"Community mismatch: {data['community']}"
+        self.credential_id = data['id']
+        self.log(f"✓ Credential created with id: {self.credential_id}")
 
-    def test_auth_required(self):
-        """Test DELETE /api/sites/{id} without token returns 401"""
-        site_id = self.created_ids.get('site')
-        if not site_id:
-            self.log("⚠️  Skipping auth test - no site available")
-            return True
-        
-        # Temporarily remove token
-        old_token = self.token
-        self.token = None
-        
-        success, _ = self.run_test("Delete site without auth", "DELETE", f"/sites/{site_id}", 401)
-        
-        # Restore token
-        self.token = old_token
-        return success
+    def test_list_credentials(self):
+        resp = requests.get(f"{BASE_URL}/discovery/credentials", headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+        data = resp.json()
+        self.log(f"Credentials list: {data}")
+        assert 'results' in data, "Missing 'results' in response"
+        assert 'total' in data, "Missing 'total' in response"
+        assert data['total'] >= 1, f"Expected at least 1 credential, got {data['total']}"
+        found = any(c['id'] == self.credential_id for c in data['results'])
+        assert found, f"Created credential {self.credential_id} not found in list"
+        self.log(f"✓ Found {data['total']} credentials")
 
-    def test_admin_operations(self):
-        """Test POST /api/users requires admin role"""
-        user_data = {
-            "username": "testadmin",
+    def test_delete_credential(self):
+        # Create a temp credential to delete
+        payload = {"name": "temp-delete", "snmp_version": "v2c", "community": "public"}
+        resp = requests.post(f"{BASE_URL}/discovery/credentials", json=payload, headers=self.headers())
+        assert resp.status_code == 200, f"Failed to create temp credential: {resp.status_code}"
+        temp_id = resp.json()['id']
+        
+        # Delete it
+        resp = requests.delete(f"{BASE_URL}/discovery/credentials/{temp_id}", headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+        data = resp.json()
+        assert data.get('deleted') == temp_id, f"Delete response mismatch: {data}"
+        self.log(f"✓ Deleted credential {temp_id}")
+
+    # Test 5: POST /api/discovery/scan (ad-hoc)
+    def test_adhoc_scan(self):
+        payload = {"target": "192.168.1.1", "timeout": 3}
+        resp = requests.post(f"{BASE_URL}/discovery/scan", json=payload, headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        self.log(f"Scan result: {data}")
+        assert 'target' in data, "Missing 'target' in response"
+        assert data['target'] == "192.168.1.1", f"Target mismatch: {data['target']}"
+        assert 'vendor' in data, "Missing 'vendor' in response"
+        assert 'model' in data, "Missing 'model' in response"
+        assert 'interfaces' in data, "Missing 'interfaces' in response"
+        assert 'ip_addresses' in data, "Missing 'ip_addresses' in response"
+        assert 'neighbors' in data, "Missing 'neighbors' in response"
+        assert isinstance(data['interfaces'], list), "interfaces should be a list"
+        assert isinstance(data['ip_addresses'], list), "ip_addresses should be a list"
+        assert isinstance(data['neighbors'], list), "neighbors should be a list"
+        # Should be simulated in sandbox
+        assert data.get('simulated') or data.get('reachable'), "Device should be simulated or reachable"
+        self.log(f"✓ Scan returned: vendor={data['vendor']}, model={data['model']}, interfaces={len(data['interfaces'])}")
+
+    # Test 6-8: Jobs
+    def test_create_job(self):
+        payload = {
+            "name": "Test Job",
+            "target_spec": "10.0.0.1-3",
+            "auto_import": True,
+            "description": "Test discovery job"
+        }
+        resp = requests.post(f"{BASE_URL}/discovery/jobs", json=payload, headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        self.log(f"Created job: {data}")
+        assert 'id' in data, "No id in response"
+        assert data['name'] == "Test Job", f"Name mismatch: {data['name']}"
+        assert data['target_spec'] == "10.0.0.1-3", f"Target spec mismatch: {data['target_spec']}"
+        assert data['status'] == 'pending', f"Expected status 'pending', got {data['status']}"
+        assert data['auto_import'] == True, f"auto_import should be True"
+        self.job_id = data['id']
+        self.log(f"✓ Job created with id: {self.job_id}")
+
+    def test_run_job(self):
+        assert self.job_id, "No job_id available"
+        resp = requests.post(f"{BASE_URL}/discovery/jobs/{self.job_id}/run", headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        self.log(f"Run job response: {data}")
+        assert data.get('status') == 'queued', f"Expected status 'queued', got {data.get('status')}"
+        self.log(f"✓ Job {self.job_id} queued")
+
+    def test_job_completion(self):
+        """Wait for job to complete and verify stats"""
+        assert self.job_id, "No job_id available"
+        self.log("Waiting for job to complete (max 15 seconds)...")
+        
+        for i in range(15):
+            time.sleep(1)
+            resp = requests.get(f"{BASE_URL}/discovery/jobs/{self.job_id}", headers=self.headers())
+            assert resp.status_code == 200, f"Failed to get job: {resp.status_code}"
+            data = resp.json()
+            self.log(f"  [{i+1}s] Job status: {data['status']}, stats: {data.get('stats', {})}")
+            
+            if data['status'] == 'completed':
+                stats = data.get('stats', {})
+                assert stats.get('scanned', 0) >= 1, f"Expected scanned >= 1, got {stats.get('scanned')}"
+                assert stats.get('discovered', 0) >= 1, f"Expected discovered >= 1, got {stats.get('discovered')}"
+                # Because auto_import=true, should have imported at least 1
+                assert stats.get('imported', 0) >= 1, f"Expected imported >= 1, got {stats.get('imported')}"
+                self.log(f"✓ Job completed: scanned={stats['scanned']}, discovered={stats['discovered']}, imported={stats['imported']}")
+                return
+        
+        raise AssertionError(f"Job did not complete within 15 seconds")
+
+    # Test 9-10: Discovered devices
+    def test_list_discovered_devices(self):
+        resp = requests.get(f"{BASE_URL}/discovery/devices", headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+        data = resp.json()
+        self.log(f"Discovered devices: total={data.get('total')}")
+        assert 'results' in data, "Missing 'results' in response"
+        assert 'total' in data, "Missing 'total' in response"
+        assert data['total'] >= 1, f"Expected at least 1 discovered device, got {data['total']}"
+        # Save first device id for import test
+        if data['results']:
+            self.discovered_device_id = data['results'][0]['id']
+            self.log(f"✓ Found {data['total']} discovered devices, first id: {self.discovered_device_id}")
+
+    def test_import_device(self):
+        assert self.discovered_device_id, "No discovered_device_id available"
+        resp = requests.post(f"{BASE_URL}/discovery/devices/{self.discovered_device_id}/import", 
+                           json={}, headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        self.log(f"Import result: {data}")
+        assert 'device_id' in data, "Missing 'device_id' in response"
+        assert 'interfaces_created' in data, "Missing 'interfaces_created' in response"
+        assert 'ips_created' in data, "Missing 'ips_created' in response"
+        assert 'cables_created' in data, "Missing 'cables_created' in response"
+        self.log(f"✓ Imported device: device_id={data['device_id']}, interfaces={data['interfaces_created']}, ips={data['ips_created']}, cables={data['cables_created']}")
+
+    # Test 11: Check auto-discovered tag
+    def test_auto_discovered_tag(self):
+        resp = requests.get(f"{BASE_URL}/devices?q=auto", headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+        data = resp.json()
+        self.log(f"Auto-discovered devices: {data}")
+        assert 'results' in data, "Missing 'results' in response"
+        # Should have at least one device with auto-discovered tag
+        found = False
+        for device in data.get('results', []):
+            if 'auto-discovered' in device.get('tags', []):
+                found = True
+                self.log(f"✓ Found auto-discovered device: {device.get('name')} with tags: {device.get('tags')}")
+                break
+        assert found, "No devices found with 'auto-discovered' tag"
+
+    # Test 12: Topology
+    def test_topology(self):
+        resp = requests.get(f"{BASE_URL}/discovery/topology", headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+        data = resp.json()
+        self.log(f"Topology: {data}")
+        assert 'nodes' in data, "Missing 'nodes' in response"
+        assert 'edges' in data, "Missing 'edges' in response"
+        assert isinstance(data['nodes'], list), "nodes should be a list"
+        assert isinstance(data['edges'], list), "edges should be a list"
+        self.log(f"✓ Topology: {len(data['nodes'])} nodes, {len(data['edges'])} edges")
+
+    # Test 13-16: Netdisco integration
+    def test_netdisco_test_bogus(self):
+        """Test with bogus URL - should return reachable=false, not 500"""
+        payload = {
+            "base_url": "https://bogus-netdisco-url-that-does-not-exist.example.com",
+            "username": "test",
+            "password": "test",
+            "verify_ssl": False
+        }
+        resp = requests.post(f"{BASE_URL}/discovery/netdisco/test", json=payload, headers=self.headers())
+        # Should NOT return 500
+        assert resp.status_code != 500, f"Should not return 500 for bogus URL, got {resp.status_code}: {resp.text}"
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        self.log(f"Netdisco test result: {data}")
+        assert 'reachable' in data, "Missing 'reachable' in response"
+        assert data['reachable'] == False, f"Expected reachable=false for bogus URL, got {data['reachable']}"
+        self.log(f"✓ Netdisco test with bogus URL returned reachable=false (graceful)")
+
+    def test_netdisco_sync_bogus(self):
+        """Sync with bogus URL - should return devices_pulled=0, not 500"""
+        payload = {
+            "base_url": "https://bogus-netdisco-url-that-does-not-exist.example.com",
+            "username": "test",
+            "password": "test",
+            "verify_ssl": False
+        }
+        resp = requests.post(f"{BASE_URL}/discovery/netdisco/sync", json=payload, headers=self.headers())
+        # Should NOT return 500
+        assert resp.status_code != 500, f"Should not return 500 for bogus URL, got {resp.status_code}: {resp.text}"
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        self.log(f"Netdisco sync result: {data}")
+        assert 'devices_pulled' in data, "Missing 'devices_pulled' in response"
+        assert data['devices_pulled'] == 0, f"Expected devices_pulled=0 for bogus URL, got {data['devices_pulled']}"
+        self.log(f"✓ Netdisco sync with bogus URL returned devices_pulled=0 (graceful)")
+
+    def test_netdisco_settings_get(self):
+        resp = requests.get(f"{BASE_URL}/discovery/netdisco/settings", headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+        data = resp.json()
+        self.log(f"Netdisco settings: {data}")
+        # Should return a dict (may be empty or have defaults)
+        assert isinstance(data, dict), "Settings should be a dict"
+        # If password exists, it should be masked
+        if 'password' in data and data['password']:
+            assert data['password'] == '***', f"Password should be masked, got {data['password']}"
+        self.log(f"✓ Netdisco settings retrieved")
+
+    def test_netdisco_settings_save(self):
+        payload = {
+            "base_url": "https://test-netdisco.example.com",
+            "username": "testuser",
             "password": "testpass",
-            "email": "admin@test.com",
-            "is_admin": False
+            "verify_ssl": True
         }
-        success, _ = self.run_test("Create user (admin only)", "POST", "/users", 200, data=user_data)
-        return success
+        resp = requests.post(f"{BASE_URL}/discovery/netdisco/settings", json=payload, headers=self.headers())
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        self.log(f"Save settings result: {data}")
+        assert data.get('saved') == True, f"Expected saved=true, got {data}"
+        self.log(f"✓ Netdisco settings saved")
 
-    def test_api_tokens(self):
-        """Test POST /api/api-tokens for current user"""
-        token_data = {"description": "Test API Token", "write_enabled": True}
-        success, token = self.run_test("Create API token", "POST", "/api-tokens", 200, data=token_data)
-        if success:
-            self.log(f"API token created: {token.get('key', '')[:10]}...")
-        return success
+    # Test 17: Auth enforcement
+    def test_auth_required(self):
+        """Test that endpoints require authentication"""
+        resp = requests.post(f"{BASE_URL}/discovery/jobs", json={"name": "test", "target_spec": "10.0.0.1"})
+        assert resp.status_code == 401, f"Expected 401 without auth, got {resp.status_code}"
+        self.log(f"✓ Auth required: got 401 as expected")
 
-    def test_bulk_delete(self):
-        """Test bulk delete on sites"""
-        # Create a few sites for bulk delete
-        ids = []
-        for i in range(3):
-            success, site = self.run_test(f"Create bulk test site {i}", "POST", "/sites", 200,
-                                         data={"name": f"Bulk Delete Site {i}"})
-            if success:
-                ids.append(site['id'])
+    def run_all_tests(self):
+        """Run all tests in sequence"""
+        print("\n" + "="*80)
+        print("SMIFS DISCOVERY MODULE - BACKEND API TESTS")
+        print("="*80)
         
-        if not ids:
-            return False
-        
-        success, result = self.run_test("Bulk delete sites", "POST", "/sites/bulk_delete", 200,
-                                       data={"ids": ids})
-        if success:
-            deleted = result.get('deleted', 0)
-            self.log(f"Bulk delete removed {deleted} sites")
-            return deleted == len(ids)
-        return False
+        # Login first
+        try:
+            self.login()
+        except Exception as e:
+            self.log(f"FATAL: Login failed - {e}", "ERROR")
+            return 1
 
-    def print_summary(self):
-        """Print test summary"""
+        # Run all tests
+        self.test("1. GET /api/discovery/stats", self.test_stats)
+        self.test("2. POST /api/discovery/credentials (create)", self.test_create_credential)
+        self.test("3. GET /api/discovery/credentials (list)", self.test_list_credentials)
+        self.test("4. DELETE /api/discovery/credentials/{id}", self.test_delete_credential)
+        self.test("5. POST /api/discovery/scan (ad-hoc scan)", self.test_adhoc_scan)
+        self.test("6. POST /api/discovery/jobs (create job)", self.test_create_job)
+        self.test("7. POST /api/discovery/jobs/{id}/run", self.test_run_job)
+        self.test("8. GET /api/discovery/jobs/{id} (completion check)", self.test_job_completion)
+        self.test("9. GET /api/discovery/devices (list)", self.test_list_discovered_devices)
+        self.test("10. POST /api/discovery/devices/{id}/import", self.test_import_device)
+        self.test("11. GET /api/devices?q=auto (check auto-discovered tag)", self.test_auto_discovered_tag)
+        self.test("12. GET /api/discovery/topology", self.test_topology)
+        self.test("13. POST /api/discovery/netdisco/test (bogus URL)", self.test_netdisco_test_bogus)
+        self.test("14. POST /api/discovery/netdisco/sync (bogus URL)", self.test_netdisco_sync_bogus)
+        self.test("15. GET /api/discovery/netdisco/settings", self.test_netdisco_settings_get)
+        self.test("16. POST /api/discovery/netdisco/settings", self.test_netdisco_settings_save)
+        self.test("17. Auth enforcement (401 without token)", self.test_auth_required)
+
+        # Summary
         print("\n" + "="*80)
         print("TEST SUMMARY")
         print("="*80)
-        print(f"Total Tests: {self.tests_run}")
+        print(f"Total tests: {self.tests_run}")
         print(f"Passed: {self.tests_passed} ✅")
         print(f"Failed: {self.tests_failed} ❌")
-        print(f"Success Rate: {(self.tests_passed/self.tests_run*100):.1f}%")
+        print(f"Success rate: {(self.tests_passed/self.tests_run*100):.1f}%")
         
         if self.failures:
             print("\n" + "="*80)
-            print("FAILURES")
+            print("FAILURES:")
             print("="*80)
-            for f in self.failures[:10]:  # Show first 10 failures
-                print(f"❌ {f.get('test', 'Unknown')}")
-                if 'expected' in f:
-                    print(f"   Expected: {f['expected']}, Got: {f['actual']}")
-                if 'response' in f:
-                    print(f"   Response: {f['response']}")
-                if 'error' in f:
-                    print(f"   Error: {f['error']}")
-                print()
+            for i, failure in enumerate(self.failures, 1):
+                print(f"{i}. {failure}")
         
-        print("="*80)
         return 0 if self.tests_failed == 0 else 1
 
-
-def main():
-    tester = NetBoxTester()
-    
-    print("="*80)
-    print("SMIFS Enterprise Data Centre - Backend API Tests")
-    print("="*80)
-    print(f"Base URL: {BASE_URL}")
-    print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("="*80)
-    print()
-    
-    # Core endpoints
-    tester.test_root_endpoint()
-    tester.test_health_endpoint()
-    
-    # Auth tests
-    if not tester.test_login():
-        print("\n❌ CRITICAL: Login failed. Cannot proceed with authenticated tests.")
-        return tester.print_summary()
-    
-    tester.test_register()
-    tester.test_auth_me()
-    
-    # Schema
-    tester.test_schema_endpoint()
-    
-    # CRUD tests on key models
-    tester.test_sites_crud()
-    tester.test_devices_crud()
-    tester.test_racks_crud()
-    tester.test_prefixes_crud()
-    tester.test_ip_addresses_crud()
-    tester.test_vlans_crud()
-    
-    # Customization
-    tester.test_customization_models()
-    
-    # Special endpoints
-    tester.test_changelog()
-    tester.test_search()
-    tester.test_stats()
-    
-    # GraphQL
-    tester.test_graphql_collections()
-    tester.test_graphql_collection_query()
-    
-    # CSV import/export
-    tester.test_csv_export()
-    tester.test_csv_import()
-    
-    # Cables (polymorphic)
-    tester.test_cables_polymorphic()
-    
-    # Auth & permissions
-    tester.test_auth_required()
-    tester.test_admin_operations()
-    tester.test_api_tokens()
-    
-    # Bulk operations
-    tester.test_bulk_delete()
-    
-    return tester.print_summary()
-
-
 if __name__ == "__main__":
-    sys.exit(main())
+    tester = DiscoveryTester()
+    sys.exit(tester.run_all_tests())

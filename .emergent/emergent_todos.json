@@ -1,14 +1,26 @@
 [
   {
-    "content": "Phase 2-5: Backend complete (95 models + auth + GraphQL + search + special tools)",
+    "content": "Install discovery deps (pysnmp/puresnmp, httpx) for SNMP + Netdisco REST",
     "status": "completed"
   },
   {
-    "content": "Phase 6: Frontend - All pages (Layout, Login, Dashboard, Resource pages, Admin, GraphQL, special views)",
+    "content": "Backend: Discovery models (Credential, Job, DiscoveredDevice) + routers",
     "status": "completed"
   },
   {
-    "content": "Phase 7: End-to-end testing - 46/46 backend + 15/16 frontend passed; minor dropdown fix applied",
+    "content": "Backend: SNMP scanner with fallback simulation + async job runner",
     "status": "completed"
+  },
+  {
+    "content": "Backend: Netdisco REST client + mapper to SMIFS models",
+    "status": "completed"
+  },
+  {
+    "content": "Frontend: Discovery section in sidebar + Dashboard, Jobs, Discovered, Topology, Netdisco pages",
+    "status": "in_progress"
+  },
+  {
+    "content": "Test the discovery flow end-to-end with testing agent",
+    "status": "pending"
   }
 ]

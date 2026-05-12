@@ -18,6 +18,7 @@ from app.routers.special_routers import (
     cables_router, prefix_router, rack_tools_router,
     changelog_router, search_router, stats_router,
 )
+from app.routers.discovery_router import router as discovery_router
 from app.graphql_api import graphql_router
 
 app = FastAPI(title='SMIFS Enterprise Data Centre', version='1.0.0')
@@ -60,6 +61,7 @@ api_router.include_router(rack_tools_router)
 api_router.include_router(changelog_router)
 api_router.include_router(search_router)
 api_router.include_router(stats_router)
+api_router.include_router(discovery_router)
 
 
 # Schema introspection: list all available models

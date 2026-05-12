@@ -13,6 +13,10 @@ import CableTrace from '@/pages/CableTrace';
 import ChangeLog from '@/pages/ChangeLog';
 import { UsersAdmin, GroupsAdmin, ApiTokensAdmin } from '@/pages/Admin';
 import GraphQLPlayground from '@/pages/GraphQLPlayground';
+import DiscoveryDashboard from '@/pages/DiscoveryDashboard';
+import { CredentialsPage, JobsPage, DiscoveredDevicesPage } from '@/pages/DiscoveryPages';
+import DiscoveryTopology from '@/pages/DiscoveryTopology';
+import NetdiscoSync from '@/pages/NetdiscoSync';
 import { RESOURCES } from '@/lib/resources';
 
 function RequireAuth({ children }) {
@@ -51,6 +55,12 @@ function AppRoutes() {
               <Route path="/admin/users" element={<UsersAdmin />} />
               <Route path="/admin/groups" element={<GroupsAdmin />} />
               <Route path="/admin/api-tokens" element={<ApiTokensAdmin />} />
+              <Route path="/discovery" element={<DiscoveryDashboard />} />
+              <Route path="/discovery/credentials" element={<CredentialsPage />} />
+              <Route path="/discovery/jobs" element={<JobsPage />} />
+              <Route path="/discovery/devices" element={<DiscoveredDevicesPage />} />
+              <Route path="/discovery/topology" element={<DiscoveryTopology />} />
+              <Route path="/discovery/netdisco" element={<NetdiscoSync />} />
               <Route path="/:resource/:id" element={<ResourceDetailRoute />} />
               <Route path="/:resource" element={<ResourceListRoute />} />
               <Route path="*" element={<div className="p-6">Page not found.</div>} />
