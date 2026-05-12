@@ -79,6 +79,24 @@ async def list_jobs():
     return {'total': len(docs), 'results': serialize_list(docs)}
 
 
+@router.post('/expand-targets')
+async def expand_targets_preview(payload: Dict[str, Any] = Body(...)):
+    """Preview how a target spec expands to actual host IPs.
+
+    Accepts {"target_spec": "10.0.0.0/24"}. Returns the host count and the
+    first 20 IPs so the UI can confirm what a scan would actually probe.
+    """
+    spec = (payload.get('target_spec') or '').strip()
+    if not spec:
+        return {'count': 0, 'sample': [], 'truncated': False}
+    targets = expand_targets(spec)
+    return {
+        'count': len(targets),
+        'sample': targets[:20],
+        'truncated': len(targets) > 20,
+    }
+
+
 @router.get('/jobs/{id}')
 async def get_job(id: str):
     doc = await db.discovery_jobs.find_one({'id': id}, {'_id': 0})

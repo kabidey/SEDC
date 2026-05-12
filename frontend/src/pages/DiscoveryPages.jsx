@@ -87,6 +87,7 @@ export function JobsPage() {
   const [sites, setSites] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', target_spec: '', credential_id: '__none__', site_id: '__none__', auto_import: true, description: '' });
+  const [preview, setPreview] = useState(null);
 
   const load = async () => {
     const [j, c, s] = await Promise.all([api.get('/discovery/jobs'), api.get('/discovery/credentials'), api.get('/sites?limit=200')]);
@@ -95,6 +96,22 @@ export function JobsPage() {
     setSites(s.data.results || []);
   };
   useEffect(() => { load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, []);
+
+  // Live preview: expand target_spec into a host count whenever the user types
+  useEffect(() => {
+    if (!open) { setPreview(null); return; }
+    const spec = form.target_spec.trim();
+    if (!spec) { setPreview(null); return; }
+    const t = setTimeout(async () => {
+      try {
+        const { data } = await api.post('/discovery/expand-targets', { target_spec: spec });
+        setPreview(data);
+      } catch {
+        setPreview(null);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [form.target_spec, open]);
 
   const create = async () => {
     try {
@@ -146,11 +163,32 @@ export function JobsPage() {
         <DialogContent className="max-w-xl">
           <DialogHeader><DialogTitle>Create Discovery Job</DialogTitle><DialogDescription>Provide a target spec (CIDR, range, or comma list) and an SNMP credential.</DialogDescription></DialogHeader>
           <div className="space-y-3">
-            <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="DC1 Subnet" /></div>
-            <div><Label>Target Spec</Label><Input value={form.target_spec} onChange={(e) => setForm({ ...form, target_spec: e.target.value })} placeholder="10.0.0.0/24 or 10.0.0.1-10 or comma list" /></div>
+            <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="DC1 Subnet" data-testid="job-form-name" /></div>
+            <div>
+              <Label>Target Spec</Label>
+              <Input value={form.target_spec} onChange={(e) => setForm({ ...form, target_spec: e.target.value })} placeholder="e.g. 10.0.0.0/24" data-testid="job-form-target-spec" />
+              <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                <div><strong className="text-foreground">CIDR:</strong> <code className="text-emerald-700 dark:text-emerald-400">10.0.0.0/24</code> &nbsp; — every host in that subnet</div>
+                <div><strong className="text-foreground">Range (short):</strong> <code className="text-emerald-700 dark:text-emerald-400">10.0.0.1-50</code> &nbsp; — last-octet shorthand</div>
+                <div><strong className="text-foreground">Range (full):</strong> <code className="text-emerald-700 dark:text-emerald-400">192.168.1.1-192.168.1.50</code></div>
+                <div><strong className="text-foreground">List:</strong> <code className="text-emerald-700 dark:text-emerald-400">10.0.0.1, 10.0.0.5, 192.168.1.1</code> &nbsp; — mix &amp; match (comma separated)</div>
+                <div><strong className="text-foreground">Single host:</strong> <code className="text-emerald-700 dark:text-emerald-400">10.0.0.1</code> &nbsp; or a hostname</div>
+                <div className="text-amber-700 dark:text-amber-400 mt-1">Hard cap: 1024 hosts per spec.</div>
+              </div>
+              {preview && (
+                <div className="mt-2 p-2 rounded border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 text-xs" data-testid="job-target-preview">
+                  <div className="font-medium text-emerald-800 dark:text-emerald-300">
+                    Will scan {preview.count} host{preview.count === 1 ? '' : 's'}{preview.truncated ? ' (showing first 20)' : ''}
+                  </div>
+                  {preview.sample.length > 0 && (
+                    <div className="mt-1 text-muted-foreground font-mono break-all">{preview.sample.join(', ')}{preview.truncated ? ', ...' : ''}</div>
+                  )}
+                </div>
+              )}
+            </div>
             <div><Label>Credential</Label>
               <Select value={form.credential_id} onValueChange={(v) => setForm({ ...form, credential_id: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger data-testid="job-form-credential"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Default (public v2c)</SelectItem>
                   {creds.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -169,7 +207,10 @@ export function JobsPage() {
             <div className="flex items-center gap-3"><Switch checked={form.auto_import} onCheckedChange={(v) => setForm({ ...form, auto_import: v })} /><Label>Auto-import discovered devices to SMIFS</Label></div>
             <div><Label>Description</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={create}>Create</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={create} className="bg-emerald-600 hover:bg-emerald-700" data-testid="job-form-create" disabled={!form.name || !form.target_spec}>Create Job</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

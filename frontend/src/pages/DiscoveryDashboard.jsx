@@ -91,7 +91,7 @@ export default function DiscoveryDashboard() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">Ad-hoc Scan</CardTitle>
-          <CardDescription>Probe a single target by IP/hostname using SNMP. Unreachable hosts return an honest error — no simulated data.</CardDescription>
+          <CardDescription>Probe a single target by IP/hostname using SNMP. Unreachable hosts return an honest error — no simulated data. For range / CIDR scans see the section below.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3 items-end mb-4">
@@ -134,6 +134,48 @@ export default function DiscoveryDashboard() {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Range Scan / Subnet Sweep */}
+      <Card className="mb-6 border-emerald-500/40">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><Radar size={16} className="text-emerald-600" />Range / Subnet Scan</CardTitle>
+          <CardDescription>
+            Scan an IP range, a CIDR subnet, or a comma-separated list.
+            Create a <strong>Discovery Job</strong> — that's how SMIFS runs SNMP sweeps across many hosts in parallel,
+            persists results, and (optionally) auto-imports devices into the inventory.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 text-sm">
+              <div className="font-medium">Supported target formats</div>
+              <ul className="space-y-1.5 text-muted-foreground">
+                <li><Badge variant="outline" className="font-mono mr-2">CIDR</Badge><code className="text-emerald-700 dark:text-emerald-400">10.0.0.0/24</code> — every host in that subnet</li>
+                <li><Badge variant="outline" className="font-mono mr-2">Range</Badge><code className="text-emerald-700 dark:text-emerald-400">10.0.0.1-50</code> — last-octet shorthand</li>
+                <li><Badge variant="outline" className="font-mono mr-2">Range</Badge><code className="text-emerald-700 dark:text-emerald-400">192.168.1.1-192.168.1.50</code></li>
+                <li><Badge variant="outline" className="font-mono mr-2">List</Badge><code className="text-emerald-700 dark:text-emerald-400">10.0.0.1, 10.0.0.5, 192.168.1.1</code></li>
+                <li><Badge variant="outline" className="font-mono mr-2">Mix</Badge><code className="text-emerald-700 dark:text-emerald-400">10.0.0.0/28, 192.168.1.10-20</code></li>
+                <li className="text-amber-700 dark:text-amber-400">Cap: 1024 hosts per spec.</li>
+              </ul>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="font-medium">How to run a range scan</div>
+              <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                <li>Open <Link to="/discovery/credentials" className="text-emerald-700 dark:text-emerald-400 underline">Discovery → Credentials</Link> and add your SNMP credential.</li>
+                <li>Open <Link to="/discovery/jobs" className="text-emerald-700 dark:text-emerald-400 underline">Discovery → Jobs</Link> and click <strong>Add Job</strong>.</li>
+                <li>Type your range/CIDR in the <strong>Target Spec</strong> field. You'll see a live preview of the host count.</li>
+                <li>Pick the credential and a target Site (optional), toggle <strong>Auto-import</strong>, and click <strong>Create</strong>.</li>
+                <li>Hit <strong>Run</strong>. Stats update every 5 seconds; results land in <Link to="/discovery/devices" className="text-emerald-700 dark:text-emerald-400 underline">Discovered Devices</Link>.</li>
+              </ol>
+              <div className="pt-1">
+                <Link to="/discovery/jobs">
+                  <Button className="bg-emerald-600 hover:bg-emerald-700" data-testid="goto-jobs-from-dashboard"><Radar size={14} className="mr-1" />Open Discovery Jobs</Button>
+                </Link>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
