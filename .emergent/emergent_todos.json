@@ -1,26 +1,18 @@
 [
   {
-    "content": "Install discovery deps (pysnmp/puresnmp, httpx) for SNMP + Netdisco REST",
+    "content": "Install discovery deps + backend models/routers (snmp + netdisco)",
     "status": "completed"
   },
   {
-    "content": "Backend: Discovery models (Credential, Job, DiscoveredDevice) + routers",
+    "content": "Backend: SNMP scanner with simulated fallback + Netdisco client + mapper",
     "status": "completed"
   },
   {
-    "content": "Backend: SNMP scanner with fallback simulation + async job runner",
+    "content": "Frontend: Discovery section (Dashboard, Credentials, Jobs, Discovered, Topology, Netdisco)",
     "status": "completed"
   },
   {
-    "content": "Backend: Netdisco REST client + mapper to SMIFS models",
+    "content": "End-to-end testing — 96.3% pass (26/27), generic search now also matches tags",
     "status": "completed"
-  },
-  {
-    "content": "Frontend: Discovery section in sidebar + Dashboard, Jobs, Discovered, Topology, Netdisco pages",
-    "status": "in_progress"
-  },
-  {
-    "content": "Test the discovery flow end-to-end with testing agent",
-    "status": "pending"
   }
 ]

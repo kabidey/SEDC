@@ -32,7 +32,7 @@ def build_router(
     ):
         f: Dict[str, Any] = {}
         if q:
-            f['$or'] = [{'name': {'$regex': q, '$options': 'i'}}, {'slug': {'$regex': q, '$options': 'i'}}, {'description': {'$regex': q, '$options': 'i'}}]
+            f['$or'] = [{'name': {'$regex': q, '$options': 'i'}}, {'slug': {'$regex': q, '$options': 'i'}}, {'description': {'$regex': q, '$options': 'i'}}, {'tags': {'$regex': q, '$options': 'i'}}]
         return await crud.list(filter=f, limit=limit, offset=offset, sort=sort)
 
     @router.get('/export')
