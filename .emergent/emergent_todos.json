@@ -1,18 +1,34 @@
 [
   {
-    "content": "Write comprehensive tutorial content (19 chapters, ~40 steps, beginner-friendly)",
-    "status": "completed"
+    "content": "Install monitoring deps (ping3) + design data models",
+    "status": "in_progress"
   },
   {
-    "content": "Build Help.jsx page with collapsible TOC sidebar + Prev/Next navigation + search filter",
-    "status": "completed"
+    "content": "Backend: Check engine (ICMP, TCP, HTTP, SNMP, DNS) with async runners + retries",
+    "status": "pending"
   },
   {
-    "content": "Add Help/Tutorial nav entry to sidebar + onboarding banner on Dashboard",
-    "status": "completed"
+    "content": "Backend: Alert rule evaluator + state machine + notification dispatcher (email/webhook/Slack/Teams)",
+    "status": "pending"
   },
   {
-    "content": "Verify with screenshots — all 4 views render correctly",
-    "status": "completed"
+    "content": "Backend: Background scheduler that polls monitors at their intervals",
+    "status": "pending"
+  },
+  {
+    "content": "Backend: SSE realtime stream + REST endpoints (monitors, alerts, rules, channels, metrics)",
+    "status": "pending"
+  },
+  {
+    "content": "Frontend: Live NOC Dashboard with status grid, sparkline charts, active alerts panel, sound option",
+    "status": "pending"
+  },
+  {
+    "content": "Frontend: Monitor / Alert Rule / Channel / Alert History pages + sidebar entries",
+    "status": "pending"
+  },
+  {
+    "content": "Run end-to-end testing",
+    "status": "pending"
   }
 ]
