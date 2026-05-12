@@ -1,0 +1,15 @@
+{
+  "short_name": "SMIFS EDC",
+  "name": "SMIFS Enterprise Data Centre",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#047857",
+  "background_color": "#064e3b"
+}
