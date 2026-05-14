@@ -14,12 +14,13 @@ import { toast } from 'sonner';
 import { Plus, Play, Trash2, Pencil, Radio, Activity, RotateCw, ExternalLink } from 'lucide-react';
 
 const TYPES = [
-  { value: 'icmp', label: 'ICMP (Ping)' },
-  { value: 'tcp', label: 'TCP Port' },
-  { value: 'http', label: 'HTTP' },
-  { value: 'https', label: 'HTTPS' },
-  { value: 'dns', label: 'DNS' },
-  { value: 'snmp', label: 'SNMP' },
+  { value: 'icmp', label: 'ICMP (Ping) — host availability + latency' },
+  { value: 'tcp', label: 'TCP Port — check any TCP service' },
+  { value: 'http', label: 'HTTP — web service health' },
+  { value: 'https', label: 'HTTPS — encrypted web service health' },
+  { value: 'dns', label: 'DNS — name resolution health' },
+  { value: 'snmp', label: 'SNMP — network device monitoring' },
+  { value: 'sip', label: 'SIP — voice / PBX OPTIONS ping' },
 ];
 
 const STATUS_STYLES = {
@@ -34,7 +35,7 @@ const defaultForm = () => ({
   type: 'icmp',
   target: '',
   url: '',
-  port: 80,
+  port: null,
   http_method: 'GET',
   expected_status: 200,
   expected_text: '',
@@ -42,6 +43,9 @@ const defaultForm = () => ({
   oid: '1.3.6.1.2.1.1.3.0',
   community: 'public',
   record_type: 'A',
+  dns_server: '',
+  sip_transport: 'udp',
+  sip_user: 'ping',
   interval_seconds: 30,
   timeout_seconds: 5,
   icmp_count: 3,
@@ -89,13 +93,15 @@ export default function Monitors() {
 
   const save = async () => {
     try {
+      const defaultPort = { http: 80, https: 443, tcp: 80, sip: 5060, snmp: 161 }[form.type];
       const payload = {
         ...form,
-        port: Number(form.port) || 80,
+        port: form.port == null || form.port === '' ? defaultPort : Number(form.port),
         interval_seconds: Math.max(5, Number(form.interval_seconds) || 30),
         timeout_seconds: Math.max(1, Number(form.timeout_seconds) || 5),
         icmp_count: Math.max(1, Number(form.icmp_count) || 3),
         retry: Math.max(1, Number(form.retry) || 1),
+        dns_server: form.dns_server || null,
         thresholds: Object.fromEntries(Object.entries(form.thresholds || {}).map(([k, v]) => [k, v === '' || v == null ? null : Number(v)])),
       };
       if (editing) await api.patch(`/monitoring/monitors/${editing.id}`, payload);
@@ -245,11 +251,12 @@ export default function Monitors() {
               </div>
             </TabsContent>
             <TabsContent value="target" className="space-y-3 pt-3">
-              {form.type === 'http' || form.type === 'https' ? (
+              {(form.type === 'http' || form.type === 'https') ? (
                 <>
                   <div>
-                    <Label>URL</Label>
-                    <Input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://example.com/health" />
+                    <Label>URL or hostname</Label>
+                    <Input value={form.url || form.target} onChange={(e) => setForm({ ...form, url: e.target.value, target: e.target.value })} placeholder={form.type === 'https' ? 'https://example.com/health  or  example.com' : 'http://example.com  or  example.com'} />
+                    <div className="text-xs text-muted-foreground mt-1">Bare hostnames auto-prefix with <code>{form.type}://</code>. Follows redirects automatically.</div>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
@@ -272,19 +279,20 @@ export default function Monitors() {
                   </div>
                   <div>
                     <Label>Expected text (optional substring)</Label>
-                    <Input value={form.expected_text || ''} onChange={(e) => setForm({ ...form, expected_text: e.target.value })} />
+                    <Input value={form.expected_text || ''} onChange={(e) => setForm({ ...form, expected_text: e.target.value })} placeholder='e.g. "OK" or "healthy"' />
                   </div>
                 </>
               ) : (
                 <div>
-                  <Label>Target (host or IP)</Label>
-                  <Input value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} placeholder="e.g. 10.0.0.1 or core-sw.smifs.local" />
+                  <Label>Target (host, FQDN, or IP)</Label>
+                  <Input value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} placeholder="e.g. 10.0.0.1, core-sw.smifs.local, www.google.com" />
+                  <div className="text-xs text-muted-foreground mt-1">Hostnames are DNS-resolved on every check; the resolved IP is recorded with each sample.</div>
                 </div>
               )}
               {form.type === 'tcp' && (
                 <div>
                   <Label>Port</Label>
-                  <Input type="number" value={form.port} onChange={(e) => setForm({ ...form, port: e.target.value })} />
+                  <Input type="number" value={form.port ?? ''} onChange={(e) => setForm({ ...form, port: e.target.value })} placeholder="80" />
                 </div>
               )}
               {form.type === 'icmp' && (
@@ -294,15 +302,19 @@ export default function Monitors() {
                     <Input type="number" value={form.icmp_count} onChange={(e) => setForm({ ...form, icmp_count: e.target.value })} />
                   </div>
                   <div className="text-xs text-muted-foreground pt-6">
-                    ICMP requires raw sockets; if blocked, set up a TCP monitor for the same host.
+                    Uses <code>ping3</code> (raw socket) with automatic fallback to <code>/bin/ping</code>, then TCP/443+TCP/80 for latency if ICMP is firewalled.
                   </div>
                 </div>
               )}
               {form.type === 'snmp' && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label>Community (v2c)</Label>
                     <Input value={form.community} onChange={(e) => setForm({ ...form, community: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Port</Label>
+                    <Input type="number" value={form.port ?? ''} onChange={(e) => setForm({ ...form, port: e.target.value })} placeholder="161" />
                   </div>
                   <div>
                     <Label>OID</Label>
@@ -311,14 +323,42 @@ export default function Monitors() {
                 </div>
               )}
               {form.type === 'dns' && (
-                <div>
-                  <Label>Record type</Label>
-                  <Select value={form.record_type} onValueChange={(v) => setForm({ ...form, record_type: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {['A', 'AAAA'].map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Record type</Label>
+                    <Select value={form.record_type} onValueChange={(v) => setForm({ ...form, record_type: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {['A', 'AAAA'].map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>DNS server (optional)</Label>
+                    <Input value={form.dns_server} onChange={(e) => setForm({ ...form, dns_server: e.target.value })} placeholder="1.1.1.1 (defaults to system resolver)" />
+                  </div>
+                </div>
+              )}
+              {form.type === 'sip' && (
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label>SIP transport</Label>
+                    <Select value={form.sip_transport} onValueChange={(v) => setForm({ ...form, sip_transport: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="udp">UDP (most common)</SelectItem>
+                        <SelectItem value="tcp">TCP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Port</Label>
+                    <Input type="number" value={form.port ?? ''} onChange={(e) => setForm({ ...form, port: e.target.value })} placeholder="5060" />
+                  </div>
+                  <div>
+                    <Label>SIP user (OPTIONS target)</Label>
+                    <Input value={form.sip_user} onChange={(e) => setForm({ ...form, sip_user: e.target.value })} placeholder="ping" />
+                  </div>
                 </div>
               )}
             </TabsContent>

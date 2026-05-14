@@ -19,10 +19,10 @@ router = APIRouter(prefix='/monitoring', tags=['Monitoring'])
 # ============ MONITORS ============
 class MonitorCreate(BaseModel):
     name: str
-    type: str = 'icmp'  # icmp | tcp | http | https | dns | snmp
+    type: str = 'icmp'  # icmp | tcp | http | https | dns | snmp | sip
     target: Optional[str] = None
     url: Optional[str] = None
-    port: Optional[int] = 80
+    port: Optional[int] = None  # default chosen from type if omitted
     http_method: Optional[str] = 'GET'
     expected_status: Optional[int] = 200
     expected_text: Optional[str] = None
@@ -30,6 +30,9 @@ class MonitorCreate(BaseModel):
     oid: Optional[str] = '1.3.6.1.2.1.1.3.0'
     community: Optional[str] = 'public'
     record_type: Optional[str] = 'A'
+    dns_server: Optional[str] = None
+    sip_transport: Optional[str] = 'udp'  # 'udp' or 'tcp'
+    sip_user: Optional[str] = 'ping'
     interval_seconds: int = 60
     timeout_seconds: int = 5
     icmp_count: int = 3
